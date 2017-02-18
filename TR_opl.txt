@@ -1,0 +1,192 @@
+/*********************************************
+ * OPL 12.6.3.0 Model
+ * Author: yuxin
+ * Creation Date: Feb 15, 2017 at 4:45:53 AM
+ *********************************************/
+
+
+ tuple link {
+  	int index;
+    int org;
+    int dst;
+    int linkDistance;
+}
+
+tuple demand {
+//  	int timeSlot;
+  	int index;
+    int org;
+    int dst;
+    float cost;
+}
+
+int Nmax=10;
+int G=10;
+int NumNodes = ...;   // Number of nodes
+range Nodes = 1..NumNodes;
+{link} Links = ...;
+{demand} Demands = ...;
+//int maxDistance=85600;
+//int TR=2000;
+float TR[Demands];
+int supply[Nodes][Demands]; //-1, node is the src; 1, node is the dst; 0 node is intermediate node
+
+execute INITIALIZE {
+    for(var N in Nodes)
+      for(var D in Demands)
+         if(N == D.org) 
+            supply[N][D] = -1;  
+            
+	for(var N1 in Nodes)
+      for(var D1 in Demands)         
+         if(N1 == D1.dst) 
+            supply[N1][D1] = 1; 
+            
+	for(var N2 in Nodes)
+      for(var D2 in Demands)         
+         if(N2 != D2.org && N2 != D2.dst) 
+            supply[N2][D2] = 0;
+            
+       for (var x in Demands)
+        TR[x]=3651-1.25*x.cost;
+}
+//constraint csv;
+//constraint dd;
+//constraint staton;
+//constraint startplususage;
+
+
+
+//dvar int Accept[Demands] in 0..1; //boolean, 1: demand is accepted, 0: demand is denied
+dvar int UsageL[Links][Demands] in 0..1;//vij
+dvar float Fstart[Demands] in 0..10000;
+dvar int Delta[Demands][Demands] in 0..1;
+//dvar int SNRlink[Links]in 0..10000;
+//dvar int S[Links][Demands]in 0..100;
+//dvar int z[Demands]in 0..10;
+//dexpr  float c = (max(D in Demands) (Fstart[D]+D.cost));
+//dvar int Sigma[Links][Demands] in 0..40000;
+//dvar int Y[Nodes][Demands] in 0..maxDistance;
+////////////////////////////////////////////////////Regenerators
+dvar float U[Links][Demands] in 0..10000;
+dvar int   Ire[Nodes][Demands] in 0..1;
+dvar int III[Nodes][Demands] in 0..1;// III=1-Ire;
+dvar int I[Nodes]in 0..1;
+dvar int NNN[Nodes] in 0..100;
+dvar float X[Links][Demands] in 0..10000;
+dvar float Ynode[Nodes][Demands] in 0..10000;
+dexpr int Total=sum(a in Nodes)I[a];
+dexpr  float c = (max(D in Demands) (Fstart[D]+D.cost));
+minimize c+Total;
+
+subject to {
+
+///////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+    // Flow conservation
+      forall(N2 in Nodes, D2 in Demands)
+    cvs:
+//    forall(N2 in Nodes, D2 in Demands)
+       sum(L2 in Links : N2 == L2.dst) UsageL[L2][D2]
+              - sum (L2 in Links: N2 == L2.org) UsageL[L2][D2]
+              == supply[N2][D2];
+      // spectrum cannot overlap  
+    
+   forall(  X in Demands , Y in Demands )
+     dd:
+     if (X==Y) Delta[X][Y]+Delta[Y][X]==0;
+//   else  Delta[X][Y]+Delta[Y][X]==1;//
+else Delta[X][Y]+Delta[Y][X]==1;
+     
+     
+      forall(X in Demands, Y in Demands, Z in Links )
+        start: 
+//     if (X!=Y)
+      (Fstart[X]-Fstart[Y])<=2000000*(1-Delta[X][Y]-UsageL[Z][X]-UsageL[Z][Y]+2);
+        
+//      /startplususage=
+       forall(X in Demands, Y in Demands, Z in Links ) 
+//     if (X!=Y)
+frequncy:
+      (Fstart[X]-Fstart[Y]+X.cost+G)<=(2000000+G)*(1-Delta[X][Y]-UsageL[Z][X]-UsageL[Z][Y]+2);
+    
+//Transmission Reach model    
+ //  forall(D in Demands, L in Links)
+ //	  tr:
+ //		  sum(L in Links)UsageL[L][D]*L.linkDistance<=TR[D];
+
+forall(a in Links, b in Demands)
+TR11: U[a][b]<=UsageL[a][b]*TR[b];
+
+forall(a in Links, b in Demands)
+TR12: U[a][b]<=Ynode[a.org][b];
+
+forall (a in Links, b in Demands)
+  TR13: Ynode[a.org][b]-U[a][b]<=TR[b]*(1-UsageL[a][b]);
+  
+
+   forall( a in Nodes, c in Demands)      
+   ynode1:Ynode[a][c]==sum(b in Links : a == b.dst)(X[b][c]+UsageL[b][c]*b.linkDistance); 
+   ///////////////////////////////////////////////////////////////////
+   
+   forall ( b in Demands,c in Nodes)
+     
+     xxx:  III[c][b]== 1-Ire[c][b];
+     
+   forall (a in Links,b in Demands )
+     // X[a][b]=III[a.org][b]*U[a][b]
+     XXX1:  X[a][b]<=10000*III[a.org][b];
+     
+        forall (a in Links,b in Demands )
+     // X[a][b]=III[a.org][b]*U[a][b]
+     XXX2:  X[a][b]<=U[a][b];
+     
+      forall (a in Links,b in Demands )
+     // X[a][b]=III[a.org][b]*U[a][b]
+     XXX3:  X[a][b]>=U[a][b]-(1-III[a.org][b])*10000;
+     
+     forall (a in Links,b in Demands )
+     // X[a][b]=III[a.org][b]*U[a][b]
+     XXX4:  X[a][b]>=0;   
+////////////////////////////////////////     ///////////////////////////////////////////////////     
+      forall (a in  Nodes, b in Demands)
+   
+    
+   nnodes:    NNN[a] == sum(b in Demands) Ire[a][b]; 
+   
+  // forall (a in Nodes)
+     
+    // IIInodes:  sum (a in Nodes)NNN[a]<=1;
+     
+ forall (a in Nodes)
+   
+   NumLimit: I[a]*Nmax>=NNN[a];
+///////////////////////////////////////////////////////////////     
+     //  forall (a in  Nodes, b in Demands)
+   
+    
+  // nnodes:    NNN[a] == sum(b in Demands) Ire[a][b]; 
+   
+  // forall (a in Nodes)
+     
+    // IIInodes:  sum (a in Nodes)NNN[a]<=2;
+     
+// forall (a in Nodes)
+   
+//   NumLimit: I[a]*Nmax>=NNN[a];
+     
+   }     
+  execute {
+  writeln("toaluse of bandwidth = " + c);
+}    
+      
+      
+      
+      
+
+
+
+ 
