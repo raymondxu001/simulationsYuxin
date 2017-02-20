@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from gurobipy import *
 import time
+import copy
 
 INF = np.inf
 Nmax = 10 # max number of regenerator circuits per regenerator node
@@ -226,28 +227,15 @@ class Network(object):
                     setattr(model.params, key, value)
                 except:
                     pass
+        model.update()
                 
         toc = time.clock()
         self.model_time = toc-tic
-                
+        
         model.optimize()
         
         toc2 = time.clock()
         self.solve_time = toc2-toc
-        
-        solutions = {}
-        solutions['UsageL'] = UsageL
-        solutions['Fstart'] = Fstart
-        solutions['Delta'] = Delta
-        solutions['U'] = U
-        solutions['Ire'] = Ire
-        solutions['III'] = III
-        solutions['I'] = I
-        solutions['NNN'] = NNN
-        solutions['X'] = X
-        solutions['Ynode'] = Ynode
-        solutions['Total'] = Total
-        solutions['c'] = c
         
         # save files
         if len(kwargs):
@@ -276,6 +264,61 @@ class Network(object):
             for d2 in demands.id:
                 if d1!=d2:
                     Deltax[d1, d2] = Delta[d1, d2].x
+
+        Fstartx = {}
+        for d in demands.id:
+            Fstartx[d] = Fstart[d].x
+                   
+        Ux = {} # U[a, b] = UsageL[a,b]*Ynode[a,b]
+        for l in self.links.id:
+            for d in demands.id:
+                Ux[l, d] = U[l, d].x
+                  
+        Irex = {} # 
+        for n in self.nodes:
+            for d in demands.id:
+                Irex[n, d] = Ire[n, d].x
+                    
+        IIIx = {} # 
+        for n in self.nodes:
+            for d in demands.id:
+                IIIx[n, d] = III[n, d].x
+                    
+        Ix = {}
+        for n in self.nodes:
+            Ix[n] = I[n].x
+              
+        NNNx = {}
+        for n in self.nodes:
+            NNNx[n] = NNN[n].x
+                
+        Xx = {}
+        for l in self.links.id:
+            for d in demands.id:
+                Xx[l, d] = X[l, d].x
+                  
+        Ynodex = {}
+        for n in self.nodes:
+            for d in range(n_demands):
+                Ynodex[n, d] = Ynode[n, d].x
+                      
+        Totalx = Total.x
+        
+        cx = c.x
+        
+        solutions = {}
+        solutions['UsageL'] = UsageLx
+        solutions['Fstart'] = Fstartx
+        solutions['Delta'] = Deltax
+        solutions['U'] = Ux
+        solutions['Ire'] = Irex
+        solutions['III'] = IIIx
+        solutions['I'] = Ix
+        solutions['NNN'] = NNNx
+        solutions['X'] = Xx
+        solutions['Ynode'] = Ynodex
+        solutions['Total'] = Totalx
+        solutions['c'] = cx
         
         return model, solutions, UsageLx, Deltax
 
@@ -295,9 +338,11 @@ class Network(object):
         demands_fixed = previous_solutions['demands_fixed'] # old demands
         UsageLx = previous_solutions['UsageL']
         Deltax = previous_solutions['Delta']
-        demands_all = demands_added+demands_fixed 
+        print(demands_added)
+        print(demands_fixed)
+        demands_all = list(demands_added)+list(demands_fixed)
         n_demands = len(demands_all)
-        demands = demands.loc[demands.id.isin(demands_all)]
+        demands = demands.loc[demands.id.isin(demands_all), :]
         
 
         # define supply 
@@ -469,6 +514,7 @@ class Network(object):
                     setattr(model.params, key, value)
                 except:
                     pass
+        model.update()
                 
         toc = time.clock()
         self.model_time = toc-tic
@@ -477,20 +523,6 @@ class Network(object):
         
         toc2 = time.clock()
         self.solve_time = toc2-toc
-        
-        solutions = {}
-        solutions['UsageL'] = UsageL
-        solutions['Fstart'] = Fstart
-        solutions['Delta'] = Delta
-        solutions['U'] = U
-        solutions['Ire'] = Ire
-        solutions['III'] = III
-        solutions['I'] = I
-        solutions['NNN'] = NNN
-        solutions['X'] = X
-        solutions['Ynode'] = Ynode
-        solutions['Total'] = Total
-        solutions['c'] = c
         
         # save files
         if len(kwargs):
@@ -519,43 +551,210 @@ class Network(object):
             for d2 in demands.id:
                 if d1!=d2:
                     Deltax[d1, d2] = Delta[d1, d2].x
+                          
+        Fstartx = {}
+        for d in demands.id:
+            Fstartx[d] = Fstart[d].x
+                   
+        Ux = {} # U[a, b] = UsageL[a,b]*Ynode[a,b]
+        for l in self.links.id:
+            for d in demands.id:
+                Ux[l, d] = U[l, d].x
+                  
+        Irex = {} # 
+        for n in self.nodes:
+            for d in demands.id:
+                Irex[n, d] = Ire[n, d].x
+                    
+        IIIx = {} # 
+        for n in self.nodes:
+            for d in demands.id:
+                IIIx[n, d] = III[n, d].x
+                    
+        Ix = {}
+        for n in self.nodes:
+            Ix[n] = I[n].x
+              
+        NNNx = {}
+        for n in self.nodes:
+            NNNx[n] = NNN[n].x
+                
+        Xx = {}
+        for l in self.links.id:
+            for d in demands.id:
+                Xx[l, d] = X[l, d].x
+                  
+        Ynodex = {}
+        for n in self.nodes:
+            for d in range(n_demands):
+                Ynodex[n, d] = Ynode[n, d].x
+                      
+        Totalx = Total.x
         
+        cx = c.x
+        
+        solutions = {}
+        solutions['UsageL'] = UsageLx
+        solutions['Fstart'] = Fstartx
+        solutions['Delta'] = Deltax
+        solutions['U'] = Ux
+        solutions['Ire'] = Irex
+        solutions['III'] = IIIx
+        solutions['I'] = Ix
+        solutions['NNN'] = NNNx
+        solutions['X'] = Xx
+        solutions['Ynode'] = Ynodex
+        solutions['Total'] = Totalx
+        solutions['c'] = cx
         
         return model, solutions, UsageLx, Deltax
     
-    def scheduler(self, idx, iteration_history):
+    def scheduler(self, idx, demands, iteration_history, shuffle=False):
         '''Generate demands_fixed and demands_added according to history
-        idx is the index of the next step, idx 
-        iteration_history contains:
-            - step id
-            - demands_fixed
-            - demands_added
-            - solutions
-            - UsageLx
-            - Deltax
+            idx is the index of the next step, idx 
+            iteration_history contains:
+                - step id
+                - demands_fixed
+                - demands_added
+                - solutions
+                - UsageLx
+                - Deltax
+            return:
+                - demands_added
+                - demands_fixed
+                - no_demands, whether there is no demands left and we should 
+                    stop
         '''
         
+        n_demands_initial = 10
+        n_iter_per_stage = 10
+        th_mipgap = 0.01
+        n_demands_increment = 5
+        n_demands_holdout = 3
+        
+        # the first iteration
+        if idx==0:
+            demands_id = demands.id.as_matrix()
+            if shuffle:
+                np.random.shuffle(demands_id)
+            demands_added = demands_id[:n_demands_initial]
+            demands_fixed = []
+            no_demands = False 
+            
+            return demands_added, demands_fixed, no_demands
+        
+        # how many iterations this set of demands has been solved 
+        num_iter_solved = [len(iteration_history[i]['demands_solved']) 
+            for i in range(len(iteration_history))]
+        num_iter_solved = np.bincount(num_iter_solved)
+        # mip gaps
+        mipgaps = [iteration_history[i]['model'].mipgap 
+            for i in range(len(iteration_history))]
+        if num_iter_solved[-1]==n_iter_per_stage or mipgaps[-1]<th_mipgap:
+            # a set of demands have been solved 10 times
+            # or the mip gap is close to zero
+            # then finish this round
+            
+            # check the left demands 
+            demands_left = np.setdiff1d(demands.id.as_matrix()-
+                        np.array(iteration_history[idx-1]['demands_solved']))
+            num_demands_left = len(demands_left)
+            if num_demands_left==0:
+                # all the demands are solved
+                no_demands = True # we don't need to solve anymore
+                demands_added = []
+                demands_fixed = iteration_history[idx-1]['demands_fixed']
+                
+                return demands_added, demands_fixed, no_demands
+
+            else:
+                # there are still some demands left, check the number of left 
+                # demands
+                num_demands_added = min(n_demands_increment, num_demands_left)
+                demands_added = demands_left[:num_demands_added]
+                demands_fixed = iteration_history[idx-1]['demands_solved']
+                no_demands = False
+                
+                return demands_added, demands_fixed, no_demands
+            
+        else:
+            # we are in the middle of a stage, not the first one,
+            # so holdout n_demands_holdout demands, add them into the network
+            demands_solved = \
+                copy.copy(iteration_history[idx-1]['demands_solved'])
+            np.random.shuffle(demands_solved)
+            demands_added = demands_solved[:n_demands_holdout]
+            demands_fixed = demands_solved[n_demands_holdout:]
+            no_demands = False
+            
+            return demands_added, demands_fixed, no_demands
+        
     
-    def iterate(self, demands, random_state=0, **kwargs):
+    def iterate(self, demands, random_state=0, shuffle=False, **kwargs):
         '''Iterate 
         
         '''
-        
         np.random.seed(random_state)
-        demands_id = demands.id.as_matrix()
-        np.random.shuffle(demands_id)
         
+        idx = 0
         iteration_history = {}
-        iteration_history[0, 'step_id'] = 0
-        iteration_history[0, 'demands_fixed'] = []
-        iteration_history[0, 'demands_added'] = []
-        iteration_history[0, 'solutions'] = []
-        iteration_history[0, 'UsageLx'] = []
-        iteration_history[0, 'Deltax'] = []
+        iteration_history[idx] = {}
+#        iteration_history = {'step_id': [], 'demands_fixed': [], 
+#                             'demands_added': [], 'solutions': [], 
+#                             'UsageLx': [], 'Deltax': []}
+#        iteration_history = pd.DataFrame(iteration_history)
+#        iteration_history = iteration_history[['step_id', 'demands_fixed', 
+#                            'demands_added', 'solutions', 'UsageLx', 'Deltax']]
+        iteration_history[idx]['step_id'] = idx
+        iteration_history[idx]['demands_fixed'] = None
+        iteration_history[idx]['demands_added'] = None
+        iteration_history[idx]['demands_solved'] = None
+        iteration_history[idx]['solutions'] = None
+        iteration_history[idx]['UsageLx'] = None
+        iteration_history[idx]['Deltax'] = None
         
+        # solve the problem for the first time
+        demands_added, demands_fixed, _ = \
+            self.scheduler(idx, demands, iteration_history, shuffle)
+        demands_tmp = demands.loc[demands.id.isin(demands_added), :]
+        model, solutions, UsageLx, Deltax = \
+            self.solve_all(demands_tmp, **kwargs)
+        iteration_history[idx]['demands_fixed'] = demands_fixed
+        iteration_history[idx]['demands_added'] = demands_added
+        iteration_history[idx]['demands_solved'] = demands_added
+        iteration_history[idx]['solutions'] = solutions
+        iteration_history[idx]['UsageLx'] = UsageLx
+        iteration_history[idx]['Deltax'] = Deltax
+        iteration_history[idx]['model'] = model
+        idx += 1
         
+        stop_flag = True
+        while stop_flag:
+            demands_added, demands_fixed, no_demands = \
+                self.scheduler(idx, demands, iteration_history, shuffle)
+            previous_solutions = {}
+            previous_solutions['UsageL'] = UsageLx
+            previous_solutions['Delta'] = Deltax
+            previous_solutions['demands_added'] = demands_added
+            previous_solutions['demands_fixed'] = demands_fixed
+            model, solutions, UsageLx, Deltax = \
+                self.solve_partial(demands, previous_solutions, **kwargs)
+            
+            iteration_history[idx] = {}
+            iteration_history[idx]['step_id'] = idx
+            iteration_history[idx]['demands_fixed'] = demands_fixed
+            iteration_history[idx]['demands_added'] = demands_added
+            iteration_history[idx]['demands_solved'] = list(demands_fixed)+\
+                             list(demands_added)
+            iteration_history[idx]['solutions'] = solutions
+            iteration_history[idx]['UsageLx'] = UsageLx
+            iteration_history[idx]['Delatx'] = Deltax
+            iteration_history[idx]['model'] = model
+            
+            idx += 1
+            stop_flag = no_demands
         
-        return iteration_history
+        return iteration_history, model
         
 
 if __name__=='__main__':
@@ -568,7 +767,7 @@ if __name__=='__main__':
     network_cost = pd.read_csv('networkDT.csv', header=None)/100
     network_cost = network_cost.as_matrix()
     sn = Network(network_cost)
-    n_demands = 10
+    n_demands = 25
     demands = sn.create_demands(n_demands, low=40, high=100)
 #    model, solutions, UsageLx, Deltax = \
 #        sn.solve_all(demands, mipfocus=1, timelimit=1, method=2, 
@@ -581,4 +780,5 @@ if __name__=='__main__':
 #    previous_solutions['Delta'] = Deltax
 #    model, solutions, UsageLx, Deltax = sn.solve_partial(demands, previous_solutions)
     
-    iteration_history = sn.iterate(demands)
+    iteration_history, model = sn.iterate(demands, mipfocus=1, timelimit=1, method=2, 
+                                   mipgap=0.01)
