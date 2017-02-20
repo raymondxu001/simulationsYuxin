@@ -22775,3 +22775,12 @@ Root relaxation: objective 1.420000e+02, 13 iterations, 0.03 seconds
  Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
 
 *    0     0               0     142.0000000  142.00000  0.00%     -    0s
+
+Explored 0 nodes (13 simplex iterations) in 0.05 seconds
+Thread count was 4 (of 4 available processors)
+
+Solution count 3: 142 146 148 
+Pool objective bound 142
+
+Optimal solution found (tolerance 1.00e-02)
+Best objective 1.419999999976e+02, best bound 1.419999999976e+02, gap 0.0000%
