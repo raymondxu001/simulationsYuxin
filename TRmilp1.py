@@ -59,7 +59,10 @@ class Network(object):
                                 'data_rates': data_rates})
         demands = demands[['id', 'source', 'destination', 'data_rates']]
 
+        # QPSK
         tr = [(3651-1.25*data_rates[i])/100 for i in range(n_demands)]
+        # BPSK
+#        tr = [(7400-3.66*data_rates[i])/100 for i in range(n_demands)]
         demands['TR'] = tr
 
         return demands
@@ -627,7 +630,7 @@ class Network(object):
                     stop
         '''
         
-        n_demands_initial = 10
+        n_demands_initial = 5
         n_iter_per_stage = 10
         th_mipgap = 0.01
         n_demands_increment = 5
@@ -652,7 +655,7 @@ class Network(object):
         mipgaps = [iteration_history[i]['model'].mipgap 
             for i in range(len(iteration_history))]
 #        print(mipgaps)
-        if num_iter_solved[-1]==n_iter_per_stage or mipgaps[-1]<th_mipgap:
+        if num_iter_solved[-1]==n_iter_per_stage:# or mipgaps[-1]<th_mipgap:
             # a set of demands have been solved 10 times
             # or the mip gap is close to zero
             # then finish this round
@@ -699,6 +702,7 @@ class Network(object):
         '''Iterate 
         
         '''
+        tic = time.clock()
         np.random.seed(random_state)
         
         idx = 0
@@ -733,6 +737,19 @@ class Network(object):
         iteration_history[idx]['model'] = model
         idx += 1
         
+#        print(idx)
+#        print(iteration_history[idx]['solutions']['Total'])
+#        print(iteration_history[idx-1]['solutions']['c'])
+#        print(len(iteration_history[idx-1]['solutions']['demands_fixed']))
+#        print(len(iteration_history[idx-1]['solutions']['demands_added']))
+#        
+#        print('Iteration {}: Total={}, c={}, {} old demands, {} new demands.'.\
+#              format(idx, iteration_history[idx]['solutions']['Total'],
+#                     iteration_history[idx-1]['solutions']['c'],
+#                     len(iteration_history[idx-1]['solutions']['demands_fixed']),
+#                     len(iteration_history[idx-1]['solutions']['demands_added'])
+#                     ))
+        
         stop_flag = True
         while stop_flag:
             demands_added, demands_fixed, no_demands = \
@@ -754,11 +771,20 @@ class Network(object):
             iteration_history[idx]['UsageLx'] = UsageLx
             iteration_history[idx]['Deltax'] = Deltax
             iteration_history[idx]['model'] = model
+
+#            print('Iteration {}: Total={}, c={}, {} old demands, {} new demands.'.\
+#                  format(idx, iteration_history[idx]['solutions']['Total'],
+#                         iteration_history[idx]['solutions']['c'],
+#                         len(iteration_history[idx]['solutions']['demands_fixed']),
+#                         len(iteration_history[idx]['solutions']['demands_added'])))
             
             idx += 1
             stop_flag = not no_demands
+            
+        toc = time.clock()
+        self.total_runtime = toc-tic
         
-        return iteration_history, model
+        return iteration_history
         
 
 if __name__=='__main__':
@@ -771,8 +797,10 @@ if __name__=='__main__':
     network_cost = pd.read_csv('networkDT.csv', header=None)/100
     network_cost = network_cost.as_matrix()
     sn = Network(network_cost)
-    n_demands = 50
+    n_demands = 25
     demands = sn.create_demands(n_demands, low=40, high=100)
+    demands = pd.read_csv('demands25.csv')
+    demands = demands.iloc[:10]
 #    model, solutions, UsageLx, Deltax = \
 #        sn.solve_all(demands, mipfocus=1, timelimit=1, method=2, 
 #                         mipgap=0.01, write=['solution.sol', 'test.mps'])
@@ -784,5 +812,5 @@ if __name__=='__main__':
 #    previous_solutions['Delta'] = Deltax
 #    model, solutions, UsageLx, Deltax = sn.solve_partial(demands, previous_solutions)
     
-    iteration_history, model = sn.iterate(demands, mipfocus=1, timelimit=60, method=2, 
-                                   mipgap=0.1, OutputFlag=0)
+    iteration_history = sn.iterate(demands, mipfocus=1, timelimit=120, method=2, 
+                                   mipgap=0.01, outputflag=1)
