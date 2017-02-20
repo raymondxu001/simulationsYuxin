@@ -338,9 +338,10 @@ class Network(object):
         demands_fixed = previous_solutions['demands_fixed'] # old demands
         UsageLx = previous_solutions['UsageL']
         Deltax = previous_solutions['Delta']
-        print(demands_added)
-        print(demands_fixed)
-        demands_all = list(demands_added)+list(demands_fixed)
+        demands_all = list(set(demands_added).union(set(demands_fixed)))
+#        print(demands_added)
+#        print(demands_fixed)
+#        print(demands_all)
         n_demands = len(demands_all)
         demands = demands.loc[demands.id.isin(demands_all), :]
         
@@ -637,7 +638,7 @@ class Network(object):
             demands_id = demands.id.as_matrix()
             if shuffle:
                 np.random.shuffle(demands_id)
-            demands_added = demands_id[:n_demands_initial]
+            demands_added = list(demands_id[:n_demands_initial])
             demands_fixed = []
             no_demands = False 
             
@@ -650,20 +651,24 @@ class Network(object):
         # mip gaps
         mipgaps = [iteration_history[i]['model'].mipgap 
             for i in range(len(iteration_history))]
+#        print(mipgaps)
         if num_iter_solved[-1]==n_iter_per_stage or mipgaps[-1]<th_mipgap:
             # a set of demands have been solved 10 times
             # or the mip gap is close to zero
             # then finish this round
             
             # check the left demands 
-            demands_left = np.setdiff1d(demands.id.as_matrix()-
+#            print(demands.id.as_matrix())
+#            print(np.array(iteration_history[idx-1]['demands_solved']))
+            demands_left = np.setdiff1d(demands.id.as_matrix(),
                         np.array(iteration_history[idx-1]['demands_solved']))
+#            print(demands_left)
             num_demands_left = len(demands_left)
             if num_demands_left==0:
                 # all the demands are solved
                 no_demands = True # we don't need to solve anymore
                 demands_added = []
-                demands_fixed = iteration_history[idx-1]['demands_fixed']
+                demands_fixed = list(iteration_history[idx-1]['demands_solved'])
                 
                 return demands_added, demands_fixed, no_demands
 
@@ -671,8 +676,8 @@ class Network(object):
                 # there are still some demands left, check the number of left 
                 # demands
                 num_demands_added = min(n_demands_increment, num_demands_left)
-                demands_added = demands_left[:num_demands_added]
-                demands_fixed = iteration_history[idx-1]['demands_solved']
+                demands_added = list(demands_left[:num_demands_added])
+                demands_fixed = list(iteration_history[idx-1]['demands_solved'])
                 no_demands = False
                 
                 return demands_added, demands_fixed, no_demands
@@ -683,8 +688,8 @@ class Network(object):
             demands_solved = \
                 copy.copy(iteration_history[idx-1]['demands_solved'])
             np.random.shuffle(demands_solved)
-            demands_added = demands_solved[:n_demands_holdout]
-            demands_fixed = demands_solved[n_demands_holdout:]
+            demands_added = list(demands_solved[:n_demands_holdout])
+            demands_fixed = list(demands_solved[n_demands_holdout:])
             no_demands = False
             
             return demands_added, demands_fixed, no_demands
@@ -744,15 +749,14 @@ class Network(object):
             iteration_history[idx]['step_id'] = idx
             iteration_history[idx]['demands_fixed'] = demands_fixed
             iteration_history[idx]['demands_added'] = demands_added
-            iteration_history[idx]['demands_solved'] = list(demands_fixed)+\
-                             list(demands_added)
+            iteration_history[idx]['demands_solved'] = list(set(demands_fixed).union(set(demands_added)))
             iteration_history[idx]['solutions'] = solutions
             iteration_history[idx]['UsageLx'] = UsageLx
-            iteration_history[idx]['Delatx'] = Deltax
+            iteration_history[idx]['Deltax'] = Deltax
             iteration_history[idx]['model'] = model
             
             idx += 1
-            stop_flag = no_demands
+            stop_flag = not no_demands
         
         return iteration_history, model
         
@@ -767,7 +771,7 @@ if __name__=='__main__':
     network_cost = pd.read_csv('networkDT.csv', header=None)/100
     network_cost = network_cost.as_matrix()
     sn = Network(network_cost)
-    n_demands = 25
+    n_demands = 50
     demands = sn.create_demands(n_demands, low=40, high=100)
 #    model, solutions, UsageLx, Deltax = \
 #        sn.solve_all(demands, mipfocus=1, timelimit=1, method=2, 
@@ -780,5 +784,5 @@ if __name__=='__main__':
 #    previous_solutions['Delta'] = Deltax
 #    model, solutions, UsageLx, Deltax = sn.solve_partial(demands, previous_solutions)
     
-    iteration_history, model = sn.iterate(demands, mipfocus=1, timelimit=1, method=2, 
-                                   mipgap=0.01)
+    iteration_history, model = sn.iterate(demands, mipfocus=1, timelimit=60, method=2, 
+                                   mipgap=0.1, OutputFlag=0)
