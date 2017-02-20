@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-TR iterative heuristic
+Created on Mon Feb 20 15:58:44 2017
+
+@author: yx4vf
+
+CLGN iterative heuristic
 """
 
 import numpy as np
@@ -9,13 +13,22 @@ from gurobipy import *
 import time
 import copy
 
-INF = np.inf
-Nmax = 10 # max number of regenerator circuits per regenerator node
-np.random.seed(0) # set random seed
-bigM1 = 10**4 # big number
-bigM2 = 10**5 
-bigM3 = 2*10**6 
+INF = np.inf # infinity
 G = 10 # guardband
+Nmax = 10 # max number of regenerator circuits per regenerator node
+cofase = 23.86 # ASE coefficient
+rou = 2.11*10**-3
+miu = 1.705
+Noise = (10**4)/7.03
+
+
+# big number
+bigM1 = 10**4 
+bigM2 = 10**5
+bigM3 = 2*10**6 
+
+np.random.seed(0) # set random seed
+
 
 class Network(object):
     '''The network 
@@ -86,24 +99,6 @@ class Network(object):
         model = Model('TR')
         
         # define variables
-        UsageL = {} # if demand d uses link l
-        for l in self.links.id:
-            for d in demands.id:
-                UsageL[l, d] = model.addVar(vtype=GRB.BINARY, 
-                    name='UsageL_{}_{}'.format(l, d))
-                
-        Fstart = {} # the start frequency of demand d
-        for d in demands.id:
-            Fstart[d] = model.addVar(vtype=GRB.CONTINUOUS, lb=0, ub=bigM1, 
-                  name='Fstart_{}'.format(d))
-            
-        Delta = {} # order between demands
-        for d1 in demands.id:
-            for d2 in demands.id:
-                if d1!=d2:
-                    Delta[d1, d2] = model.addVar(vtype=GRB.BINARY, 
-                         name='Delta_{}_{}'.format(d1, d2))
-                    
         U = {} # U[a, b] = UsageL[a,b]*Ynode[a,b]
         for l in self.links.id:
             for d in demands.id:
@@ -142,6 +137,29 @@ class Network(object):
             for d in range(n_demands):
                 Ynode[n, d] = model.addVar(vtype=GRB.CONTINUOUS, lb=0, 
                      ub=bigM1, name='Ynode_{}_{}'.format(n, d))
+                
+        UsageL = {} # if demand d uses link l
+        for l in self.links.id:
+            for d in demands.id:
+                UsageL[l, d] = model.addVar(vtype=GRB.BINARY, 
+                    name='UsageL_{}_{}'.format(l, d))
+                
+        Fstart = {} # the start frequency of demand d
+        for d in demands.id:
+            Fstart[d] = model.addVar(vtype=GRB.CONTINUOUS, lb=0, ub=bigM1, 
+                  name='Fstart_{}'.format(d))
+            
+        Delta = {} # order between demands
+        for d1 in demands.id:
+            for d2 in demands.id:
+                if d1!=d2:
+                    Delta[d1, d2] = model.addVar(vtype=GRB.BINARY, 
+                         name='Delta_{}_{}'.format(d1, d2))                    
+
+       # GN variables  
+
+                
+
                 
         Total = model.addVar(vtype=GRB.CONTINUOUS, lb=0, ub=self.n_nodes, 
                              name='Total')
