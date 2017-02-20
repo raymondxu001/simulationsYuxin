@@ -157,7 +157,7 @@ class Network(object):
                          name='Delta_{}_{}'.format(d1, d2))                    
 
        # GN variables  
-
+asldfjal
                 
 
                 
