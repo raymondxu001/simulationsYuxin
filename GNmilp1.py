@@ -20,7 +20,7 @@ cofase = 23.86 # ASE coefficient
 rou = 2.11*10**-3
 miu = 1.705
 Noise = (10**4)/7.03
-
+cofase=23.86
 
 # big number
 bigM1 = 10**4 
@@ -157,9 +157,67 @@ class Network(object):
                          name='Delta_{}_{}'.format(d1, d2))                    
 
        # GN variables  
-asldfjal
-                
+   #    dvar float GNi[Links][Demands] in 0..10000;
+     GNi={}# intermedia variables for product
+for l in  self.links.id:
+    for d in demands.id:
+        GNi[l,d]=model.addVar(vtype=GRB.CONTINUOUS,lb=0,ub=bigM1,
+                 name='GNi_{}{}'.format(l,d))
+#dvar float G1[Links][Demands] in 0..10000;
+     G1={}# intermedia variables for product
+for l in  self.links.id:
+    for d in demands.id:
+        G1[l,d]=model.addVar(vtype=GRB.CONTINUOUS,lb=0,ub=bigM1,
+                 name='G1_{}{}'.format(l,d))
 
+        
+
+#dvar float GASEws[Links] in 0..10000;
+     GASEws={}
+     for l in self.links.id:
+         GASEws[l]=model.addVar(vtype=GRB.CONTINUOUS,lb=0,ub=bigM1,
+                 name='GASEws{}'.format(l))
+
+#dvar float GNliws[Links][Demands]in 0..10000;
+              GNliws={}# intermedia variables for product
+for l in  self.links.id:
+    for d in demands.id:
+        GNliws1[l,d]=model.addVar(vtype=GRB.CONTINUOUS,lb=0,ub=bigM1,
+                 name='GNliws_{}_{}'.format(l,d))
+
+#dvar float A1[Links][Demands] in 0..10000;
+
+ A1={}# intermedia variables for product
+for l in  self.links.id:
+    for d in demands.id:
+        A1[l,d]=model.addVar(vtype=GRB.CONTINUOUS,lb=0,ub=bigM1,
+                 name='A1_{}_{}'.format(l,d))
+        
+        
+#var int UsageL1[Links][Demands][Demands]in 0..1;
+UsageL1={}# intermedia variables for product
+for l in  self.links.id:
+    for d1 in demands.id:
+        for d2 in demands.id:
+        UsageL[l,d,d]=model.addVar(vtype=GRB.BINARY,
+                 name='UsaegL1_{}_{}_{}'.format(l,d,d))
+
+#dvar float Asenli[Links][Demands]in 0..10000;
+
+Asenli={}# intermedia variables for product
+for l in  self.links.id:
+    for d in demands.id:
+        Asenli[l,d]=model.addVar(vtype=GRB.CONTINUOUS,lb=0,ub=bigM1,
+                 name='Asenli_{}{}'.format(l,d))
+#dvar float UseAsenli[Links][Demands]in 0..10000;
+                
+UseAsenli1={}# intermedia variables for product
+for l in  self.links.id:
+    for d in demands.id:
+        UseAsenli1[l,d]=model.addVar(vtype=GRB.CONTINUOUS,lb=0,ub=bigM1,
+                 name='UseAsenli1_{}{}'.format(l,d))
+        
+ ###############################################################################################################       
                 
         Total = model.addVar(vtype=GRB.CONTINUOUS, lb=0, ub=self.n_nodes, 
                              name='Total')
@@ -236,7 +294,139 @@ asldfjal
             model.addConstr(NNN[n]==quicksum(Ire[n, d] for d in demands.id))
             model.addConstr(I[n]*Nmax>=NNN[n])
             
-        # objective
+##############################################################################################       
+            
+      #       //ASE[Y]==sum(X in Links)UsageL[X][Y]*GASEws[X];
+  # forall (X in Links )
+   #  asespam:
+    # GASEws[X]== X.linkDistance/100*cofase;   
+       for l in self.links.id:
+            for d in demands.id:
+                 model.addConstr(GASEws[l]=self.links.length[l]*cofase)
+需要除100吗
+
+                 # forall( X in Links, Y in Demands )
+    # CA1:
+  # A1[X][Y]<=20000*UsageL[X][Y];
+   
+    
+   # forall( X in Links, Y in Demands )
+   # CA2:
+   #A1[X][Y]<=GASEws[X];
+   
+   
+   
+  # forall( X in Links, Y in Demands )
+   #  CA3:
+  # A1[X][Y]>=(GASEws[X]-(1-UsageL[X][Y])*20000);
+   
+   # forall( X in Links, Y in Demands )
+   #   CA4:
+   #A1[X][Y]>=0;
+            
+            
+                   for l in self.links.id:
+            for d in demands.id:
+                model.addConstr(A1[l, d]<=bigM3*UsageL[l, d])
+                model.addConstr(A1[l, d]<=GASEws[l])
+                model.addConstr(A1[l, d]>=GASEws[l]-
+                                bigM3*(1-UsageL[l, d]))
+                model.addConstr(A1[l, d]>=0)
+        
+            
+   '''           forall( Z in Links, Y in Demands, X in Demands)
+    u1:
+   UsageL1[Z][Y][X]<=UsageL[Z][Y];
+    forall( Z in Links, Y in Demands, X in Demands)
+      u2:
+   UsageL1[Z][Y][X]<=UsageL[Z][X];
+   forall( Z in Links, Y in Demands, X in Demands)
+     u3:
+   UsageL1[Z][Y][X]>=UsageL[Z][X]+UsageL[Z][Y]-1;
+   '''
+   for l in self.links.id:
+            for d1 in demands.id:
+          for d2 in demands.id:
+              model.addConstr(UsageL1[l,d1,d2]<=UsageL[l,d1])
+              model.addConstr(UsageL1[l,d1,d2]<=UsageL[l,d2])
+             model.addConstr(UsageL1[l,d1,d2]>=UsageL[l,d1]+UsageL[l,d2]-1)
+           ''' 
+            forall( Z in Links, Y in Demands, X in Demands)
+   
+   
+   gnlimul1:
+   
+   GNi[Z][Y]==ln(rou*Y.cost*Y.cost)-UsageL[Z][Y]*ln((Y.cost+0.5*Y.cost)/(G+0.5*Y.cost))+sum (X in Demands)(UsageL1[Z][Y][X])*ln((X.cost+0.5*Y.cost)/(G+0.5*Y.cost));
+'''
+
+  for l in self.links.id:
+            for d1 in demands.id:
+          for d2 in demands.id:
+               model.addConstr(GNi[l,d1]=ln(rou*demands.data_rates[d1]*demands.data_rates[d1])-
+                               Usagel[l,d2]*ln(1.5*demands.data_rates[d1]/(G+0.5*demands.data_rates[d1]))+
+                                 quicksum(Usagel1(l,d1,d2)*ln(demands.data_rates[d2]+0.5*demands.data_rates[d1])/(G+0.5*demands.data_rates[d1])
+                                 for d in demands.id)
+      '''                           
+   forall (x in Links, y in Demands)
+   GNliws[x][y]==x.linkDistance*GNi[x][y]/100;
+  
+forall(a in Demands, b in Links)
+    s1:
+//if (UsageL[a][x1]!=0) S[x1]==sum(x1 in links)SNRlink[x1];
+G1[b][a]<=20000*UsageL[b][a];    
+    
+   
+   forall (a in Demands, b in Links)
+     
+    s2: G1[b][a]<=GNliws[b][a];
+     
+     forall (a in Demands, b in Links)
+    s3: G1[b][a]>=(GNliws[b][a]-(1-UsageL[b][a])*20000);
+     //, a in Demands,sum(b in Links)
+  forall (a in Demands,b in Links)
+    s4:       G1[b][a]>=0;                               
+        '''                         
+                for l in self.links.id:
+            for d in demands.id:
+                model.addConstr(Gnliws[l, d]= self.links.length[l]*GNi[l,d])
+                
+                for l in self.links.id:
+            for d in demands.id:
+                model.addConstr(G1[l, d]<=bigM3*UsageL[l, d])
+                model.addConstr(G1[l, d]<=GNliws[l,d])
+                model.addConstr(G1[l, d]>=GNliws[l, d]-
+                                bigM3*(1-UsageL[l, d]))
+                model.addConstr(G1[l, d]>=0)
+            
+                
+        ''' forall (a in Links, b in Demands)
+  phy: Asenli[a][b]==miu*G1[a][b]+A1[a][b]; 
+  
+ forall (a in Links, b in Demands)
+py1:  UseAsenli[a][b]<=10000*UsageL[a][b];
+ 
+  forall (a in Links, b in Demands)
+py2:  UseAsenli[a][b]<=Asenli[a][b];
+
+ forall (a in Links, b in Demands)
+py3:  UseAsenli[a][b]>=Asenli[a][b]-10000*(1-UsageL[a][b]);
+
+ forall (a in Links, b in Demands)
+py4:  UseAsenli[a][b]>=0;
+'''        
+     for l in self.links.id:
+            for d in demands.id:
+                model.addConstr(UseAsenli[l, d]<=bigM3*UsageL[l, d])
+                model.addConstr(UseAsenli[l, d]<=Asenli[l,d])
+                model.addConstr(UseAsenli[l, d]>=Asenli[l, d]-
+                                bigM3*(1-UsageL[l, d]))
+                model.addConstr(UseAsenli[l, d]>=0)
+            
+
+ ####################################################################################################           
+#####################################################################################################
+######################################################################################################           
+            # objective
         model.setObjective(c+Total, GRB.MINIMIZE)
             
         # set gurobi parameters
